@@ -15,7 +15,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.fatedeath.kiitbitesapplication"
     },
     "web": {
       "bundler": "metro",
@@ -39,14 +40,15 @@
       "typedRoutes": true
     },
     "extra": {
-      "backendUrl": "http://192.168.1.5:5002",
+      "backendUrl": "http://192.168.1.10:5001",
       "router": {},
       "eas": {
         "projectId": "f94c7f57-7d22-4c3c-b063-f38b23ddd576"
       }
     },
     "owner": "anshraj112",
-    "runtimeVersion": {
+    "runtimeVersion":
+    {
       "policy": "appVersion"
     },
     "updates": {

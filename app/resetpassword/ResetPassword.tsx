@@ -40,7 +40,7 @@ export default function ResetPasswordScreen() {
 
     try {
       setIsLoading(true);
-      const response = await axios.post(`${config.backendUrl}/api/auth/resetpassword`, {
+      const response = await axios.post(`${config.backendUrl}/api/user/auth/resetpassword`, {
         email,
         password,
       });

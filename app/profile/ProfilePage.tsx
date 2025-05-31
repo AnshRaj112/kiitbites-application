@@ -28,13 +28,13 @@ export default function ProfileScreen() {
   useEffect(() => {
     const fetchUser = async () => {
       const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        router.replace('/login/LoginForm');
-        return;
-      }
+      // if (!token) {
+        // router.replace('/login/LoginForm');
+        // return;
+      // }
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/auth/user`, {
+        const response = await fetch(`${BACKEND_URL}/api/user/auth/user`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -72,7 +72,7 @@ export default function ProfileScreen() {
               return;
             }
 
-            const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
+            const response = await fetch(`${BACKEND_URL}/api/user/auth/logout`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,

@@ -17,12 +17,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
 import Toast from 'react-native-toast-message';
-import { CustomToast } from '../CustomToast';
 import { config } from "../../config";
-
-
+import { saveItem, getItem } from "../../utils/storage"; // ✅ updated path
 
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState("");
@@ -32,14 +29,12 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-
-
   useEffect(() => {
     const checkLogin = async () => {
       try {
-        const token = await SecureStore.getItemAsync("user-jwt");
+        const token = await getItem("user-jwt");
         if (token) {
-          router.replace("/profile/ProfileForm");
+          router.replace("/profile/ProfilePage");
         }
       } catch (error) {
         console.error("Error checking login status:", error);
@@ -47,71 +42,101 @@ export default function LoginScreen() {
     };
     checkLogin();
   }, []);
-  
+
   const handleSubmit = async () => {
     setError("");
 
     if (!identifier || !password) {
-     
-        Toast.show({
-              type: 'error',
-              text1: 'Validation Error',
-              text2: 'Email/username and password are required.',
-              position: 'bottom',
-            });
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Email/username and password are required.',
+        position: 'bottom',
+      });
       return;
     }
 
     try {
       setIsLoading(true);
-      const response = await axios.post(`${config.backendUrl}/api/auth/login`, {
-        identifier,
-        password,
-      });
+      const response = await axios.post(
+        `${config.backendUrl}/api/user/auth/login`,
+        { identifier, password },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          timeout: 10000,
+        }
+      );
 
       const { token, message } = response.data;
 
       if (!token) {
-        throw new Error("Invalid response from server.");
+        throw new Error(message || 'No token received from server');
       }
 
       try {
-        console.log("Attempting to store token:", token);
-        await SecureStore.setItemAsync("user-jwt", token);
-        console.log("Token stored successfully");
-        router.replace("/profile/ProfileForm");
+        await saveItem('user-jwt', token);
+        Toast.show({
+          type: 'success',
+          text1: 'Login Successful',
+          text2: 'Redirecting to your profile...',
+          position: 'bottom',
+        });
+
+        setTimeout(() => {
+          router.replace('/profile/ProfilePage');
+        }, 1500);
       } catch (storageError) {
-        console.error("Detailed storage error:", storageError);
-        if (storageError instanceof Error) {
-          throw new Error(`Failed to store login credentials: ${storageError.message}`);
-        }
-        throw new Error("Failed to store login credentials");
+        console.error('Token storage failed:', storageError);
+        throw new Error('Failed to store authentication token');
       }
+
     } catch (error: any) {
-      console.error("Login error details:", {
-        error: error,
-        responseData: error.response?.data,
-        statusCode: error.response?.status,
-        message: error.message
+      console.error('Login error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
       });
 
-      // Handle backend-sent errors like OTP required or rate limit
-      const backendMessage = error.response?.data?.message || 
-        (error instanceof Error ? error.message : "Login failed");
-      const redirectTo = error.response?.data?.redirectTo;
+      let errorMessage = 'Login failed. Please try again.';
 
-      if (redirectTo) {
-        router.push(redirectTo); // redirect to OTP verification
+      if (error.response) {
+        const { status, data } = error.response;
+        if (status === 401) {
+          errorMessage = data?.message || 'Invalid email/phone or password';
+        } else if (status === 400) {
+          errorMessage = data?.message || 'Invalid request';
+        } else if (status >= 500) {
+          errorMessage = 'Server error. Please try again later.';
+        }
+
+        if (data?.redirectTo) {
+          router.push(data.redirectTo);
+          return;
+        }
+      } else if (error.request) {
+        errorMessage = 'Cannot connect to server. Please check your connection.';
       } else {
-        setError(backendMessage);
+        errorMessage = `Login error: ${error.message}`;
       }
+
+      setError(errorMessage);
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: errorMessage,
+        position: 'bottom',
+      });
+
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-   
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={true}>
       <SafeAreaView style={styles.container}>
         <StatusBar style="light" />
         <KeyboardAvoidingView
@@ -120,9 +145,7 @@ export default function LoginScreen() {
         >
           <View style={styles.headerContainer}>
             <Image
-              source={{
-                uri: "https://res.cloudinary.com/dt45pu5mx/image/upload/v1743530399/top_left_icon_jbwtev.png",
-              }}
+              source={{ uri: "https://res.cloudinary.com/dt45pu5mx/image/upload/v1743530399/top_left_icon_jbwtev.png" }}
               style={styles.topleftimage}
             />
             <Text style={styles.headerTitle}>Login</Text>
@@ -171,9 +194,7 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.rememberForgotContainer}>
-              <TouchableOpacity
-                onPress={() => router.push("/forgotpassword/ForgotPassword")}
-              >
+              <TouchableOpacity onPress={() => router.push("/forgotpassword/ForgotPassword")}>
                 <Text style={styles.forgotText}>Forgot Password</Text>
               </TouchableOpacity>
             </View>
@@ -192,90 +213,123 @@ export default function LoginScreen() {
 
             <View style={styles.signupContainer}>
               <Text style={styles.noAccountText}>Don't have an account? </Text>
-              <TouchableOpacity
-                onPress={() => router.push("/signup/SignupForm")}
-              >
+              <TouchableOpacity onPress={() => router.push("/signup/SignupForm")}>
                 <Text style={styles.signupText}>SIGN UP</Text>
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#1a1a2e" },
-  keyboardAvoidView: { flex: 1, justifyContent: "flex-start", paddingTop: 40 },
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a2e',
+  },
+  keyboardAvoidView: {
+    flex: 1,
+    justifyContent: "flex-start"
+  },
   headerContainer: {
     alignItems: "center",
-    justifyContent: "flex-end",
-    marginBottom: 65,
-    flex: 0.18,
-    paddingHorizontal: 20,
+    paddingTop: 90,
   },
   headerTitle: {
+    color: '#FFFFFF',
     fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: "#B0B0B0",
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 40,
   },
-  headerSubtitle: { fontSize: 16, color: "#b3b3b3", textAlign: "center" },
   formContainer: {
-    backgroundColor: "#f5f5f5",
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    padding: 25,
     flex: 1,
+    width: '100%',
+    backgroundColor: '#F6F6F6',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 22,
+    paddingTop: 40,
   },
-  inputGroup: { marginBottom: 20 },
+  inputGroup: {
+    marginBottom: 20
+  },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 6,
   },
   inputContainer: {
-    backgroundColor: "#e8e8e8",
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 15,
-    height: 55,
-     borderWidth: 1.5,          // Add this
-  borderColor: "#000000", 
+    backgroundColor: '#EDEDED',
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  input: { flex: 1, height: "100%", fontSize: 16, color: "#333" },
-  eyeIcon: { padding: 5 },
+  input: {
+    flex: 1,
+    height: "100%",
+    fontSize: 16,
+    color: "#111",
+    padding: 14,
+    borderRadius: 10,
+  },
+  eyeIcon: {
+    padding: 5
+  },
   rememberForgotContainer: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    alignItems: "center",
-    marginBottom: 25,
-  },
-  forgotText: { fontSize: 14, color: "#009688", fontWeight: "500" },
-  loginButton: {
-    backgroundColor: "#009688",
-    borderRadius: 12,
-    height: 55,
-    justifyContent: "center",
-    alignItems: "center",
+    marginTop: 8,
     marginBottom: 20,
   },
-  loginButtonText: { color: "white", fontSize: 16, fontWeight: "bold" },
+  forgotText: {
+    fontSize: 14,
+    color: "#00C2B2",
+    fontWeight: "600"
+  },
+  loginButton: {
+    backgroundColor: "#009688",
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  loginButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: 'center',
+  },
   signupContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 20,
+    marginTop: 16,
   },
-  noAccountText: { fontSize: 14, color: "#333" },
-  signupText: { fontSize: 14, color: "#009688", fontWeight: "bold" },
+  noAccountText: {
+    fontSize: 14,
+    color: "#333"
+  },
+  signupText: {
+    fontSize: 14,
+    color: "#00C2B2",
+    fontWeight: "bold"
+  },
   topleftimage: {
     position: "absolute",
+    top: 40,
+    left: 20,
+    width: 40,
+    height: 40,
   },
 });
-
-
-
