@@ -4,8 +4,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -62,12 +64,13 @@ export default function SignupStep1() {
   };
 
   return (
-    <>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <Text style={styles.title}>Sign Up</Text>
+    <View style={styles.outerContainer}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Text style={styles.title}>Sign Up</Text>
         <Text style={styles.subtitle}>Please sign up to get started</Text>
 
         <View style={styles.cardWrapper}>
@@ -95,44 +98,50 @@ export default function SignupStep1() {
             <Text style={styles.label}>PHONE</Text>
             <TextInput
               style={styles.input}
-              placeholder="1234567890"
+              placeholder="9988776655"
               placeholderTextColor="#8a8a8a"
               keyboardType="numeric"
               maxLength={10}
               value={phone}
              // onChangeText={setPhone}
              onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ''))}
+             ////
             />
 
             <TouchableOpacity style={styles.button} onPress={handleNext}>
               <Text style={styles.buttonText}>Next</Text>
             </TouchableOpacity>
 
-            <Text style={styles.footer}>
-              Already have an account?{' '}
-              <TouchableOpacity onPress={() => router.push('/login/LoginForm')}>
+             <View style={styles.signupContainer}>
+              <Text style={styles.noAccountText}>Don't have an account? </Text>
+              <TouchableOpacity
+                onPress={() => router.push("/login/LoginForm")}
+              >
                 <Text style={styles.login}>LOGIN</Text>
               </TouchableOpacity>
-            </Text>
+            </View>
           </View>
         </View>
-      </KeyboardAvoidingView>
-
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
       
       <Toast
         config={{
           error: (props) => <CustomToast {...props} />,
         }}
       />
-    </>
+    </View>
   );
 }
 const styles = StyleSheet.create({
-    container: {
+    outerContainer: {
       flex: 1,
       backgroundColor: '#1a1a2e',
+    },
+    container: {
+      flex: 1,
       alignItems: 'center',
-      paddingTop: 60,
+      paddingTop: 90,
     },
     title: {
       color: '#FFFFFF',
@@ -143,7 +152,7 @@ const styles = StyleSheet.create({
     subtitle: {
       color: '#B0B0B0',
       fontSize: 16,
-      marginBottom: 28,
+      //marginBottom: 28,
     },
     cardWrapper: {
       flex: 1,
@@ -194,7 +203,17 @@ const styles = StyleSheet.create({
       textAlign: 'center',
     },
     login: {
+      fontSize: 14,
       color: '#00C2B2',
       fontWeight: 'bold',
     },
+    noAccountText: {
+      color: '#666666',
+      fontSize: 14,
+    },
+    signupContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 16,
+  },
   });

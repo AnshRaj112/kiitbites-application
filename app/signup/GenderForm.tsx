@@ -16,7 +16,7 @@ import Toast from 'react-native-toast-message';
 import { CustomToast } from '../CustomToast';
 import Constants from 'expo-constants';
 
-const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'http://192.168.1.5:5002';
+const BACKEND_URL = Constants.expoConfig?.extra?.backendUrl || 'http://192.168.1.10:5001';
 
 export default function GenderForm() {
   const { name, email, phone, type } = useLocalSearchParams();
@@ -43,7 +43,7 @@ export default function GenderForm() {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
+      const response = await fetch(`${BACKEND_URL}/api/user/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

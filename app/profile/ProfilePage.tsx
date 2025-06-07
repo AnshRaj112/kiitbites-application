@@ -14,27 +14,29 @@ import {
   Feather,
   Entypo,
 } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { getToken, removeToken } from '../../utils/storage';
 import { config } from '../../config';
 
 const BACKEND_URL = config.backendUrl;
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [showPersonalInfo, setShowPersonalInfo] = useState(false);
   const [user, setUser] = useState<{ fullName: string; email: string; phone: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
-      const token = await AsyncStorage.getItem('token');
+      const token = await getToken();
       if (!token) {
+        await removeToken();
         router.replace('/login/LoginForm');
         return;
       }
 
       try {
-        const response = await fetch(`${BACKEND_URL}/api/auth/user`, {
+        const response = await fetch(`${BACKEND_URL}/api/user/auth/user`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -44,7 +46,7 @@ export default function ProfileScreen() {
           const data = await response.json();
           setUser(data);
         } else {
-          await AsyncStorage.removeItem('token');
+          await removeToken();
           router.replace('/login/LoginForm');
         }
       } catch (error) {
@@ -59,46 +61,59 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = async () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        onPress: async () => {
-          try {
-            const token = await AsyncStorage.getItem('token');
-            if (!token) {
-              await AsyncStorage.removeItem('token');
-              router.replace('/login/LoginForm');
-              return;
-            }
+    // For web, use browser's confirm dialog for consistency
+    if (typeof window !== 'undefined' && !window.confirm('Are you sure you want to log out?')) {
+      return;
+    }
 
-            const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            });
+    // For native, use Alert
+    if (typeof window === 'undefined') {
+      Alert.alert('Log Out', 'Are you sure you want to log out?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Log Out', onPress: performLogout },
+      ]);
+    } else {
+      await performLogout();
+    }
+  };
 
-            // Clear token regardless of response status
-            await AsyncStorage.removeItem('token');
-            
-            if (response.ok) {
-              router.replace('/login/LoginForm');
-            } else {
-              // If the server response wasn't ok, still proceed with logout
-              console.warn('Server logout failed, but proceeding with client logout');
-              router.replace('/login/LoginForm');
+  const performLogout = async () => {
+    try {
+      const token = await getToken();
+      
+      // Clear token first to prevent any race conditions
+      await removeToken();
+
+      // Try to call the logout endpoint if we have a token
+      if (token) {
+        try {
+          await fetch(`${BACKEND_URL}/api/user/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
             }
-          } catch (error) {
-            console.error('Logout failed:', error);
-            // Even if there's an error, try to clear the token and redirect
-            await AsyncStorage.removeItem('token');
-            router.replace('/login/LoginForm');
-          }
-        },
-      },
-    ]);
+          });
+        } catch (error) {
+          console.warn('Logout API call failed, but proceeding with client-side logout', error);
+        }
+      }
+
+      // Force a full page reload on web to clear all state
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login/LoginForm';
+      } else {
+        router.replace('/login/LoginForm');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Final fallback - force redirect even if something went wrong
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login/LoginForm';
+      } else {
+        router.replace('/login/LoginForm');
+      }
+    }
   };
 
   return (

@@ -35,7 +35,7 @@ export default function OtpVerificationScreen() {
 
     try {
       setIsLoading(true);
-      const response = await axios.post(`${config.backendUrl}/api/auth/otpverification`, {
+      const response = await axios.post(`${config.backendUrl}/api/user/auth/otpverification`, {
         email,
         otp,
       });

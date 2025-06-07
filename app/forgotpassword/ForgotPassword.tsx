@@ -36,7 +36,7 @@ export default function ForgotPasswordScreen() {
 
     try {
       setIsLoading(true);
-      const response = await axios.post(`${config.backendUrl}/api/auth/forgotpassword`, {
+      const response = await axios.post(`${config.backendUrl}/api/user/auth/forgotpassword`, {
         identifier,
       });
 
@@ -104,7 +104,7 @@ export default function ForgotPasswordScreen() {
             </TouchableOpacity>
 
             <View style={styles.backToLoginContainer}>
-              <TouchableOpacity onPress={() => router.back()}>
+              <TouchableOpacity onPress={() => router.replace("/login/LoginForm")}>
                 <Text style={styles.backToLoginText}>Back to Login</Text>
               </TouchableOpacity>
             </View>
